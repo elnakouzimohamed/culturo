@@ -1,4 +1,9 @@
 import streamlit as st
+import stripe
+
+# Stripe API Keys (Replace with your own)
+stripe.api_key = "sk_test_51QqxwJKy4jxgQ38B4c0oCQbIVJDjUNRAyAlO69tc6UoqXB4j2gri4EFUnG9ydrYBzc4V4te26iXeATFi0a94QKif00WneKObON"  # Replace with your actual Stripe Secret Key
+STRIPE_PUBLIC_KEY = "pk_test_51QqxwJKy4jxgQ38B5a1nDQQiDV3EaFMUm9QN1h82maOMgwjmf2SteeKs8qqpepYTDPdxjT0l9Iun1fHKUKqM1Wr000EJDJXBMi"  # Replace with your actual Stripe Public Key
 
 # Default Tourism Countries (With Placeholder)
 tourism_countries = ["Select your destination"] + [
@@ -78,12 +83,44 @@ def calculate_total_price(base_price):
     total_price = base_price + commission_fee
     return total_price, commission_fee
 
-# Streamlit UI
-st.set_page_config(page_title="Authentic Travel Platform", layout="wide")
+# Function to create Stripe Checkout Session
+def create_checkout_session(host_name, service_name, total_price):
+    """
+    Creates a Stripe checkout session and returns the checkout URL.
+    """
+    session = stripe.checkout.Session.create(
+        payment_method_types=['card'],
+        line_items=[{
+            'price_data': {
+                'currency': 'usd',
+                'product_data': {
+                    'name': f"{service_name} ",
+                },
+                'unit_amount': int(total_price * 100),  # Stripe expects amount in cents
+            },
+            'quantity': 1,
+        }],
+        mode='payment',
+        success_url="https://your-app-url.com/success",
+        cancel_url="https://your-app-url.com/cancel",
+    )
+    return session.url
 
-# Header
-st.title("🌍 Welcome to Culturo ")
-st.subheader("Explore culture like never before.")
+# Streamlit UI
+st.set_page_config(page_title="Culturo - Authentic Travel", layout="wide")
+
+# Display the logo
+st.image("logo.jpg", width=250)  # Adjust width as needed
+
+# Header with Styling
+st.markdown(
+    "<h1 style='text-align: center; color: #2E86C1;'>🌍 Welcome to Culturo </h1>", 
+    unsafe_allow_html=True
+)
+st.markdown(
+    "<h3 style='text-align: center; color: #34495E;'>Explore culture like never before.</h3>", 
+    unsafe_allow_html=True
+)
 
 # User Selection
 st.markdown("## 🌍 Find Your Authentic Experience")
@@ -101,19 +138,19 @@ if st.button("Find Experiences"):
                     base_price = host["price"]
                     total_price, commission_fee = calculate_total_price(base_price)
 
-                    st.write(f"👤 **{host['name']}** - {host['service']}")
+                    st.write(f"👤 *{host['name']}* - {host['service']}")
                     st.write(f"💰 Base Price: ${base_price}")
                     st.write(f"🔹 Platform Fee (5%): ${commission_fee:.2f}")
-                    st.write(f"💳 **Total Price: ${total_price:.2f}**")
+                    st.write(f"💳 *Total Price: ${total_price:.2f}*")
 
-                    # Pay Button (Placeholder for Payment Integration)
-                    if st.button(f"Pay Now - {host['name']}", key=host["name"]):
-                        st.success(f"Redirecting to payment for {host['service']} with {host['name']}...")
-
+                    # Pay Button with Stripe Integration
+                    checkout_url = create_checkout_session(host["name"], host["service"], total_price)
+                    st.markdown(f"[🛒 Pay Now - {host['name']}]({checkout_url})", unsafe_allow_html=True)
             else:
                 st.warning(available_hosts)
     else:
         st.warning("Please select both a destination and an experience.")
 
 # Footer
-st.text("© 2025 Culturo – Explore culture like never before.")
+st.markdown("<hr>", unsafe_allow_html=True)
+st.text("© 2025 Culturo – Explore culture like never before.")
